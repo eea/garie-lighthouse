@@ -16,6 +16,12 @@ RUN \
 
 COPY . .
 
+COPY docker-entrypoint.sh /
+
 EXPOSE 3000
+
+VOLUME ["/usr/src/garie-lighthouse/reports", "/usr/src/garie-lighthouse/logs"]
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 CMD ["npm", "start"]
