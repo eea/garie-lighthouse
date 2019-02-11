@@ -1,14 +1,13 @@
 {
-    "cron": "00 00 */6 * * *",
-    "urls": [
-        {
-            "url": "https://www.google.com",
-            "plugins": [
-                {
-                    "name": "lighthouse",
-                    "report": true
-                }
-            ]
-        }
-    ]
+  "cron": "0 */4 * * *",
+  "urls": [
+    {
+      "url": "https://www.eea.europa.eu/",
+      "extra_option": 1
+    },
+    {
+      "url": "https://biodiversity.europa.eu/",
+      "extra_option": 2
+    }
+  ]
 }
