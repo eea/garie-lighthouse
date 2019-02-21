@@ -26,4 +26,4 @@ VOLUME ["/usr/src/garie-plugin/reports"]
 
 ENTRYPOINT ["/usr/src/garie-plugin/docker-entrypoint.sh"]
 
-CMD ["npm", "start"]
+CMD ["/usr/bin/dumb-init", "npm", "start"]

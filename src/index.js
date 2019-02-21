@@ -102,9 +102,10 @@ app.use('/reports', express.static('reports'), serveIndex('reports', { icons: tr
 
 const main = async () => {
   garie_plugin.init({
-    database:'lighthouse',
+    db_name:'lighthouse',
     getData:myGetData,
-    app_name:'lighthouse-reports',
+    report_folder_name:'lighthouse-reports',
+    plugin_name:'lighthouse',
     app_root: path.join(__dirname, '..'),
     config:config
   });
