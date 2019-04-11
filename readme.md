@@ -99,7 +99,11 @@ Garie-lighthouse filters what data is stored into influxDB.
 
 | Property | Type                | Description                                                                          |
 | -------- | ------------------- | ------------------------------------------------------------------------------------ |
-| `cron`   | `string` (optional) | Cron timer. Supports syntax can be found [here].(https://www.npmjs.com/package/cron) |
+| `plugins.lighthouse.cron`   | `string` (optional) | Cron timer. Supports syntax can be found [here].(https://www.npmjs.com/package/cron) |
+| `plugins.lighthouse.retry`   | `object` (optional) | Configuration how to retry the failed tasks |
+| `plugins.lighthouse.retry.after`   | `number` (optional, default 30) | Minutes before we retry to execute the tasks |
+| `plugins.lighthouse.retry.times`   | `number` (optional, default 3) | How many time to retry to execute the failed tasks |
+| `plugins.lighthouse.retry.timeRange`   | `number` (optional, default 360) | Period in minutes to be checked in influx, to know if a task failed |
 | `urls`   | `object` (required) | Config for lighthouse. More detail below                                             |
 
 **urls object**
