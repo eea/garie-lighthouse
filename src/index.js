@@ -42,7 +42,7 @@ const filterResults = (data = {}) => {
 
     auditData.forEach(key => {
         const { rawValue } = audits[key] || {};
-        if (rawValue !== undefined) {
+        if ((rawValue !== undefined) && (rawValue !== null)){
             report[key] = rawValue;
         }
     });
