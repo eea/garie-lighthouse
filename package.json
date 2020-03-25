@@ -1,6 +1,6 @@
 {
     "name": "garie-lighthouse",
-    "version": "1.2",
+    "version": "1.2.0",
     "description": "Lighthouse image for performance metrics",
     "engines": {
         "node": ">=6"
