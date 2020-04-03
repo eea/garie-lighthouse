@@ -7,22 +7,30 @@ const chromeFlags = [
 	'--headless',
 	'--no-zygote',
 	'--no-sandbox',
-	'--headless',
+	'--headless'
 ];
 
 const launchChromeAndRunLighthouse = async (url, config) => {
+    return new Promise(async (resolve, reject) => {
 
-	const chrome = await chromeLauncher.launch({ chromeFlags });
+        const chrome = await chromeLauncher.launch({ chromeFlags });
+        const flags = {
+            port: chrome.port,
+            output: 'json'
+        };
 
-	const flags = {
-		port: chrome.port,
-		output: 'json',
-	};
-
-	const result = await lighthouse(url, flags, config);
-	await chrome.kill();
-
-	return result;
+        let result = [];
+        try{
+            result = await lighthouse(url, flags, config);
+            await chrome.kill();
+            resolve(result);
+        }
+        catch(e){
+            await chrome.kill();
+            reject(e)
+        }
+        return;
+    });
 };
 
 const createReport = results => ReportGenerator.generateReportHtml(results);

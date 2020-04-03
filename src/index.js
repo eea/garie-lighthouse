@@ -59,6 +59,7 @@ const myGetData = async (item) => {
     const { url } = item.url_settings;
     return new Promise(async (resolve, reject) => {
         try {
+            console.log("Start:", url);
             const lighthouse =
                 (await launchChromeAndRunLighthouse(url, {
                     extends: 'lighthouse:default'
