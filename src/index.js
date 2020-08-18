@@ -56,6 +56,13 @@ const filterResults = (data = {}) => {
 
 
 const myGetData = async (item) => {
+    
+    //cleanup core dumps in home - core.[0-9]*
+    let regex = /^core[.][0-9]*$/
+    fs.readdirSync('.')
+      .filter(f => regex.test(f))
+      .map(f => fs.removeSync(f))
+    
     const { url } = item.url_settings;
     return new Promise(async (resolve, reject) => {
         try {
