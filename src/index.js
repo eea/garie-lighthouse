@@ -5,7 +5,7 @@ const config = require('../config');
 
 const { launchChromeAndRunLighthouse, createReport } = require('./utils');
 
-const filterResults = (data = {}) => {
+const filterResults = (data = {}, fasterInternetConnection) => {
     const { categories = {}, audits = {} } = data;
 
     const { metrics = {} } = audits;
@@ -30,7 +30,6 @@ const filterResults = (data = {}) => {
 
         // For now don't report on any observered metrics
         if (metricItem.indexOf('observed') === -1) {
-            const metric = metricItems[metricItem];
             report[metricItem] = metricItems[metricItem];
         }
     }
@@ -48,15 +47,48 @@ const filterResults = (data = {}) => {
     Object.keys(report).forEach(key => {
         const rawValue = report[key];
         if (rawValue !== undefined){
-            cleanReport[key] = rawValue;
+            if (fasterInternetConnection === true) {
+                cleanReport[key + '_fast'] = rawValue;
+            } else {
+                cleanReport[key] = rawValue;
+            }
         }
     });
     return cleanReport;
 };
 
 
-const myGetData = async (item) => {
+const getAndParseLighthouseData = async(item, url, fasterInternetConnection) => {
+
+    const lighthouse =
+        (await launchChromeAndRunLighthouse(url, {
+            extends: 'lighthouse:default'
+        }, fasterInternetConnection)) || {};
     
+    console.log(`Successfully got default data for ${url}`);
+
+    const { reportDir } = item
+    const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
+
+    let resultsLocation = "";
+    if (fasterInternetConnection) {
+        resultsLocation = path.join(reportFolder, `/lighthouse_fast.html`);
+    } else {
+        resultsLocation = path.join(reportFolder, `/lighthouse.html`);
+    }
+
+    const report = createReport(lighthouse.lhr);
+    fs.outputFile(resultsLocation, report)
+    .then(() => console.log(`Saved report for ${url}`))
+    .catch(err => {
+         console.log(err)
+    });
+
+    const data = filterResults(lighthouse.lhr, fasterInternetConnection);
+    return data;
+}
+
+const myGetData = async (item) => {
     //cleanup core dumps in home - core.[0-9]*
     let regex = /^core[.][0-9]*$/
     fs.readdirSync('.')
@@ -67,28 +99,14 @@ const myGetData = async (item) => {
     return new Promise(async (resolve, reject) => {
         try {
             console.log("Start:", url);
-            const lighthouse =
-                (await launchChromeAndRunLighthouse(url, {
-                    extends: 'lighthouse:default'
-                })) || {};
 
-            console.log(`Successfully got data for ${url}`);
-
-            const { reportDir } = item
-            const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
-
-            const resultsLocation = path.join(reportFolder, `/lighthouse.html`);
-
-            const report = await createReport(lighthouse.lhr);
-
-            fs.outputFile(resultsLocation, report)
-                .then(() => console.log(`Saved report for ${url}`))
-                .catch(err => {
-                     console.log(err)
-                });
-
-            const data = filterResults(lighthouse.lhr);
-            resolve(data);
+            const data_fast = await getAndParseLighthouseData(item, url, true);
+            const data = await getAndParseLighthouseData(item, url, false);
+            const full_data = {
+                ...data,
+                ...data_fast
+            };
+            resolve(full_data);
 
         } catch (err) {
             console.log(`Failed to get data for ${url}`, err);
