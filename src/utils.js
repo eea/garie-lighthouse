@@ -10,14 +10,33 @@ const chromeFlags = [
 	'--headless'
 ];
 
-const launchChromeAndRunLighthouse = async (url, config) => {
-    return new Promise(async (resolve, reject) => {
+const lighthouseOptions = {
+    throttling: {
+        rttMs: 40,
+        throughputKbps: 10*1024,
+        cpuSlowdownMultiplier: 1,
+        requestLatencyMs: 0,
+        downloadThroughputKbps: 0,
+        uploadThroughputKbp: 0
+    }
+};
 
+
+const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    return new Promise(async (resolve, reject) => {
         const chrome = await chromeLauncher.launch({ chromeFlags });
-        const flags = {
+
+        let flags = {
             port: chrome.port,
             output: 'json'
         };
+
+        if (fasterInternetConnection === true) {
+           flags = {
+                ...lighthouseOptions,
+                ...flags
+            };
+        }
 
         let result = [];
         try{
