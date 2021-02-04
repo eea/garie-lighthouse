@@ -10,6 +10,7 @@ const chromeFlags = [
 	'--headless'
 ];
 
+// options for simulating a faster internet connection
 const lighthouseOptions = {
     throttling: {
         rttMs: 40,
