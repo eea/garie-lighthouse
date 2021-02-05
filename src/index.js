@@ -65,7 +65,11 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection) => 
             extends: 'lighthouse:default'
         }, fasterInternetConnection)) || {};
     
-    console.log(`Successfully got default data for ${url}`);
+    if (fasterInternetConnection) {
+        console.log(`Successfully got fast data for ${url}`);
+    } else {
+        console.log(`Successfully got default data for ${url}`);
+    }
 
     const { reportDir } = item
     const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
