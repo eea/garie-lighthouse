@@ -19,7 +19,8 @@ const lighthouseOptions = {
         requestLatencyMs: 0,
         downloadThroughputKbps: 0,
         uploadThroughputKbp: 0
-    }
+    },
+    onlyCategories: ['performance']
 };
 
 
