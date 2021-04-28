@@ -25,8 +25,10 @@ const lighthouseOptions = {
 
 
 const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
-    return new Promise(async (resolve, reject) => {
-        const chrome = await chromeLauncher.launch({ chromeFlags });
+    let chrome;
+    let result = [];
+    try {
+        chrome = await chromeLauncher.launch({ chromeFlags });
 
         let flags = {
             port: chrome.port,
@@ -34,24 +36,26 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
         };
 
         if (fasterInternetConnection === true) {
-           flags = {
+            flags = {
                 ...lighthouseOptions,
                 ...flags
             };
         }
 
-        let result = [];
-        try{
-            result = await lighthouse(url, flags, config);
-            await chrome.kill();
-            resolve(result);
+        result = await lighthouse(url, flags, config);
+        await chrome.kill();
+    } catch (err) {
+        console.log("Error appeared while running lighthouse", err);
+        try {
+            if (chrome !== undefined) {
+                await chrome.kill();
+            }
+        } catch(e) {
+            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
         }
-        catch(e){
-            await chrome.kill();
-            reject(e)
-        }
-        return;
-    });
+        throw err;
+    }
+    return result;
 };
 
 const createReport = results => ReportGenerator.generateReportHtml(results);
