@@ -59,37 +59,41 @@ const filterResults = (data = {}, fasterInternetConnection) => {
 
 
 const getAndParseLighthouseData = async(item, url, fasterInternetConnection) => {
+    try {
+        const lighthouse =
+            (await launchChromeAndRunLighthouse(url, {
+                extends: 'lighthouse:default'
+            }, fasterInternetConnection)) || {};
 
-    const lighthouse =
-        (await launchChromeAndRunLighthouse(url, {
-            extends: 'lighthouse:default'
-        }, fasterInternetConnection)) || {};
-    
-    if (fasterInternetConnection) {
-        console.log(`Successfully got fast data for ${url}`);
-    } else {
-        console.log(`Successfully got default data for ${url}`);
+        if (fasterInternetConnection) {
+            console.log(`Successfully got fast data for ${url}`);
+        } else {
+            console.log(`Successfully got default data for ${url}`);
+        }
+
+        const { reportDir } = item
+        const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
+
+        let resultsLocation = "";
+        if (fasterInternetConnection) {
+            resultsLocation = path.join(reportFolder, `/lighthouse_fast.html`);
+        } else {
+            resultsLocation = path.join(reportFolder, `/lighthouse.html`);
+        }
+
+        const report = createReport(lighthouse.lhr);
+        fs.outputFile(resultsLocation, report)
+        .then(() => console.log(`Saved report for ${url}`))
+        .catch(err => {
+            console.log(err)
+        });
+
+        const data = filterResults(lighthouse.lhr, fasterInternetConnection);
+        return data;
+    } catch (err) {
+        console.log(`Failed to run lighthouse for ${url}`, err);
+        throw err;
     }
-
-    const { reportDir } = item
-    const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
-
-    let resultsLocation = "";
-    if (fasterInternetConnection) {
-        resultsLocation = path.join(reportFolder, `/lighthouse_fast.html`);
-    } else {
-        resultsLocation = path.join(reportFolder, `/lighthouse.html`);
-    }
-
-    const report = createReport(lighthouse.lhr);
-    fs.outputFile(resultsLocation, report)
-    .then(() => console.log(`Saved report for ${url}`))
-    .catch(err => {
-         console.log(err)
-    });
-
-    const data = filterResults(lighthouse.lhr, fasterInternetConnection);
-    return data;
 }
 
 const myGetData = async (item) => {
