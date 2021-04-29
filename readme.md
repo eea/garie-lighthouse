@@ -116,4 +116,3 @@ Garie-lighthouse filters what data is stored into influxDB.
 | `url`            | `string` (required)  | Url to get lighthouse metrics for.                        |
 
 For more information please go to the [garie-plugin](https://github.com/eea/garie-plugin) repo.
-
