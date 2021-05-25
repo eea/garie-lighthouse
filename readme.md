@@ -110,8 +110,11 @@ Garie-lighthouse filters what data is stored into influxDB.
 | `plugins.lighthouse.delete_files_by_type.age`   | `number` (required for 'delete_files_by_type') | Maximum age (in days) of the custom files. Any older file will be deleted. |
 | `urls`   | `object` (required) | Config for lighthouse. More detail below |
 
+
 **urls object**
 
 | Property         | Type                 | Description                                               |
 | ---------------- | -------------------- | --------------------------------------------------------- |
 | `url`            | `string` (required)  | Url to get lighthouse metrics for.                        |
+
+For more information please go to the [garie-plugin](https://github.com/eea/garie-plugin) repo.

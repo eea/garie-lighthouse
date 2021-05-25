@@ -10,27 +10,52 @@ const chromeFlags = [
 	'--headless'
 ];
 
-const launchChromeAndRunLighthouse = async (url, config) => {
-    return new Promise(async (resolve, reject) => {
+// options for simulating a faster internet connection
+const lighthouseOptions = {
+    throttling: {
+        rttMs: 40,
+        throughputKbps: 10*1024,
+        cpuSlowdownMultiplier: 1,
+        requestLatencyMs: 0,
+        downloadThroughputKbps: 0,
+        uploadThroughputKbp: 0
+    },
+    onlyCategories: ['performance']
+};
 
-        const chrome = await chromeLauncher.launch({ chromeFlags });
-        const flags = {
+
+const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    let chrome;
+    let result = [];
+    try {
+        chrome = await chromeLauncher.launch({ chromeFlags });
+
+        let flags = {
             port: chrome.port,
             output: 'json'
         };
 
-        let result = [];
-        try{
-            result = await lighthouse(url, flags, config);
-            await chrome.kill();
-            resolve(result);
+        if (fasterInternetConnection === true) {
+            flags = {
+                ...lighthouseOptions,
+                ...flags
+            };
         }
-        catch(e){
-            await chrome.kill();
-            reject(e)
+
+        result = await lighthouse(url, flags, config);
+        await chrome.kill();
+    } catch (err) {
+        console.log("Error appeared while running lighthouse", err);
+        try {
+            if (chrome !== undefined) {
+                await chrome.kill();
+            }
+        } catch(e) {
+            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
         }
-        return;
-    });
+        throw err;
+    }
+    return result;
 };
 
 const createReport = results => ReportGenerator.generateReportHtml(results);
