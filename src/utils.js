@@ -31,6 +31,7 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
         chrome = await chromeLauncher.launch({ chromeFlags });
 
         let flags = {
+            //logLevel: 'debug',	
             port: chrome.port,
             output: 'json'
         };
