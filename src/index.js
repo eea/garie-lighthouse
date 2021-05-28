@@ -58,7 +58,7 @@ const filterResults = (data = {}, fasterInternetConnection) => {
 };
 
 
-const getAndParseLighthouseData = async(item, url, fasterInternetConnection) => {
+const getAndParseLighthouseData = async(item, url, fasterInternetConnection, reportFolder) => {
     try {
         const lighthouse =
             (await launchChromeAndRunLighthouse(url, {
@@ -71,8 +71,6 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection) => 
             console.log(`Successfully got default data for ${url}`);
         }
 
-        const { reportDir } = item
-        const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
 
         let resultsLocation = "";
         if (fasterInternetConnection) {
@@ -108,8 +106,11 @@ const myGetData = async (item) => {
         try {
             console.log("Start:", url);
 
-            const data_fast = await getAndParseLighthouseData(item, url, true);
-            const data = await getAndParseLighthouseData(item, url, false);
+            const { reportDir } = item
+            const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
+
+            const data_fast = await getAndParseLighthouseData(item, url, true, reportFolder);
+            const data = await getAndParseLighthouseData(item, url, false, reportFolder);
             const full_data = {
                 ...data,
                 ...data_fast
