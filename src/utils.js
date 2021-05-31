@@ -7,7 +7,8 @@ const chromeFlags = [
 	'--headless',
 	'--no-zygote',
 	'--no-sandbox',
-	'--headless'
+	'--headless',
+    '--collect.settings.maxWaitForFcp="450000"'
 ];
 
 // options for simulating a faster internet connection
