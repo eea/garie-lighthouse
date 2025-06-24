@@ -1,6 +1,6 @@
 const lighthouse = require('lighthouse');
 const chromeLauncher = require('chrome-launcher');
-const ReportGenerator = require('lighthouse/lighthouse-core/report/report-generator');
+const ReportGenerator = require('lighthouse/report/generator/report-generator');
 
 const chromeFlags = [
 	'--disable-gpu',
@@ -60,7 +60,7 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
     return result;
 };
 
-const createReport = results => ReportGenerator.generateReportHtml(results);
+const createReport = results => ReportGenerator.generateReport(results);
 
 
 module.exports = {
