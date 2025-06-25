@@ -1,4 +1,4 @@
-FROM node:13.12.0
+FROM node:20-bookworm
 
 RUN mkdir -p /usr/src/garie-plugin
 RUN mkdir -p /usr/src/garie-plugin/reports
