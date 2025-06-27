@@ -10,14 +10,16 @@ services:
 
     garie-plugin:
         entrypoint: bash -c "tail -f /dev/null"
-        build: .
         platform: linux/amd64
+        build: .
         privileged: true
         volumes:
             - ./src:/usr/src/garie-plugin/src:z
             - ./config.json:/usr/src/garie-plugin/config.json:z
             - /var/run/docker.sock:/run/docker.sock
             - /usr/bin/docker:/bin/docker
+            - ./reports/lighthouse-reports:/usr/src/garie-plugin/reports/lighthouse-reports:z
+
         ports:
             - 3000:3000
         environment:

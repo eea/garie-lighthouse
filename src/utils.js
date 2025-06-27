@@ -1,14 +1,21 @@
 const chromeLauncher = require('chrome-launcher');
 
 const chromeFlags = [
-	'--disable-gpu',
-	'--headless',
-	'--no-zygote',
-	'--no-sandbox',
-	'--headless',
-    '--collect.settings.maxWaitForFcp="450000"'
+  '--headless',
+  '--disable-gpu',
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--no-zygote',
+  '--no-default-browser-check',
+  '--disable-features=TranslateUI',
+  '--disable-background-timer-throttling',
+  '--disable-renderer-backgrounding',
+  '--disable-backgrounding-occluded-windows',
+  '--ignore-certificate-errors',
+  '--allow-insecure-localhost',
+  '--disable-web-security',
 ];
-
 // options for simulating a faster internet connection
 const lighthouseOptions = {
     throttling: {
@@ -30,17 +37,17 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
     try {
         chrome = await chromeLauncher.launch({ chromeFlags });
 
-      let flags = {
-  port: chrome.port,
-  output: 'json',
-  disableStorageReset: false,
-  maxWaitForFcp: 15000,
-  maxWaitForLoad: 35000,
-  formFactor: 'desktop',
-  screenEmulation: { disabled: true },
-  disableDeviceEmulation: true,
-  onlyCategories: ['performance']
-};
+            let flags = {
+        port: chrome.port,
+        output: 'json',
+        disableStorageReset: false,
+        maxWaitForFcp: 15000,
+        maxWaitForLoad: 35000,
+        formFactor: 'desktop',
+        screenEmulation: { disabled: true },
+        disableDeviceEmulation: true,
+        onlyCategories: ['performance']
+        };
 
         if (fasterInternetConnection === true) {
             flags = {

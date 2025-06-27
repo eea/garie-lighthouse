@@ -1,15 +1,13 @@
 {
   "plugins":{
         "lighthouse":{
-            "cron": "0 */4 * * *"
+            "cron": "0 */4 * * *",
+            "Maxcpus":1
         }
     },
   "urls": [
     {
-      "url": "https://www.eea.europa.eu/"
-    },
-    {
-      "url": "https://biodiversity.europa.eu/"
+      "url": "https://www.jobs.eea.europa.eu/"
     }
   ]
 }
