@@ -29,16 +29,10 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
     try {
         chrome = await chromeLauncher.launch({ chromeFlags });
 
-            let flags = {
-        port: chrome.port,
-        output: 'json',
-        disableStorageReset: false,
-        maxWaitForFcp: 15000,
-        maxWaitForLoad: 35000,
-        formFactor: 'desktop',
-        screenEmulation: { disabled: true },
-        disableDeviceEmulation: true,
-        onlyCategories: ['performance']
+             let flags = {
+            //logLevel: 'debug',	
+            port: chrome.port,
+            output: 'json'
         };
 
         if (fasterInternetConnection === true) {
