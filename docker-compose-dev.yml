@@ -1,7 +1,7 @@
 version: '3'
 services:
     influxdb:
-        image: 'influxdb:latest'
+        image: 'influxdb:1.8.10'
         ports:
             - 8086:8086
         environment:
@@ -9,6 +9,8 @@ services:
             - INFLUXDB_ADMIN_PASSWORD=admin
 
     garie-plugin:
+        entrypoint: bash -c "tail -f /dev/null"
+        platform: linux/amd64
         build: .
         privileged: true
         volumes:
@@ -16,6 +18,8 @@ services:
             - ./config.json:/usr/src/garie-plugin/config.json:z
             - /var/run/docker.sock:/run/docker.sock
             - /usr/bin/docker:/bin/docker
+            - ./reports/lighthouse-reports:/usr/src/garie-plugin/reports/lighthouse-reports:z
+
         ports:
             - 3000:3000
         environment:

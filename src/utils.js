@@ -1,6 +1,4 @@
-const lighthouse = require('lighthouse');
 const chromeLauncher = require('chrome-launcher');
-const ReportGenerator = require('lighthouse/lighthouse-core/report/report-generator');
 
 const chromeFlags = [
 	'--disable-gpu',
@@ -10,7 +8,6 @@ const chromeFlags = [
 	'--headless',
     '--collect.settings.maxWaitForFcp="450000"'
 ];
-
 // options for simulating a faster internet connection
 const lighthouseOptions = {
     throttling: {
@@ -26,12 +23,13 @@ const lighthouseOptions = {
 
 
 const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    const lighthouse = (await import('lighthouse')).default;
     let chrome;
     let result = [];
     try {
         chrome = await chromeLauncher.launch({ chromeFlags });
 
-        let flags = {
+             let flags = {
             //logLevel: 'debug',	
             port: chrome.port,
             output: 'json'
@@ -60,7 +58,10 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
     return result;
 };
 
-const createReport = results => ReportGenerator.generateReportHtml(results);
+const createReport = async (results) => {
+    const { ReportGenerator } = await import('lighthouse/report/generator/report-generator.js');
+    return ReportGenerator.generateReportHtml(results);
+};
 
 
 module.exports = {
