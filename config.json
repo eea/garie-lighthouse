@@ -1,13 +1,68 @@
 {
-  "plugins":{
-        "lighthouse":{
-            "cron": "0 */4 * * *",
-            "Maxcpus":1
-        }
-    },
-  "urls": [
-    {
-      "url": "https://www.jobs.eea.europa.eu/"
-    }
-  ]
+	"plugins": {
+		"uptimerobot": {
+			"cron": "20 2  * * *"
+		},
+		"sonarqube": {
+			"cron": "0 2 * * *"
+		},
+		"sentry-metrics": {
+			"cron": "30 2 * * *",
+			"intervals": [{
+				"field": "30days",
+				"days": 30
+			},
+                        {
+                                "field": "7days",
+                                "days": 7
+                        }],
+                        "remove_fields": ["entries"]
+		},
+		"securityheaders": {
+			"cron": "0 3 * * *",
+                        "maxCpus": 1,
+                        "requestDelay": 2000
+		},
+		"browsertime": {
+			"cron": "30 3 * * *",
+			"maxCpus": 2,
+			"cpuUsage": 0.9
+		},
+		"ssllabs": {
+			"cron": "30 4 * * *"
+		},
+		"linksintegrity": {
+			"cron": "0 5 * * *"
+		},
+		"lighthouse": {
+			"cron": "30 6 * * *",
+			"maxCpus": 1
+		},
+		"webbkoll": {
+			"cron": "30 7 * * *"
+		},
+                "checkmk": {
+			"cron": "50 4 * * *",
+			"maxCpus": 1,
+                        "additional_hosts": [
+                            "kvm-cph-05-nt",
+			    "kvm-prod1-05",
+			    "kvm-prodi-01",
+			    "www.eea.europa.eu",
+                            "kvm-prod3-01",
+                            "prodI-aws-03",
+                            "02prod-mip32",
+                            "01prod-mip31", 
+                            "01prod-mip49",
+                            "eeadmz1-wap-azure"
+                        ]
+
+		}
+	},
+	"urls": [
+		{
+			"url": "https://airindex.eea.europa.eu",
+			"plugins": {}
+		}
+		]
 }
