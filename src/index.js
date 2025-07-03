@@ -61,11 +61,7 @@ const filterResults = (data = {}, fasterInternetConnection) => {
 const getAndParseLighthouseData = async(item, url, fasterInternetConnection, reportFolder) => {
     try {
         const lighthouse =
-            (await launchChromeAndRunLighthouse(url, {
-  extends: 'lighthouse:default',
-  settings: {
-  }
-}, fasterInternetConnection)) || {};
+            (await launchChromeAndRunLighthouse(url, {}, fasterInternetConnection)) || {};
 
         if (fasterInternetConnection) {
             console.log(`Successfully got fast data for ${url}`);
