@@ -1,70 +1,76 @@
 const chromeLauncher = require('chrome-launcher');
 
 const chromeFlags = [
-  '--headless',
-  '--no-sandbox',
-  '--disable-gpu',
-  '--disable-dev-shm-usage',
-  '--disable-setuid-sandbox',
-  '--no-zygote',
-  '--no-first-run',
-  '--disable-background-timer-throttling',
-  '--disable-backgrounding-occluded-windows',
-  '--disable-renderer-backgrounding'
+	'--headless',
+	'--no-sandbox',
+	'--disable-gpu',
+	'--disable-dev-shm-usage',
+	'--disable-setuid-sandbox',
+	'--no-zygote',
+	'--no-first-run',
+	'--disable-background-timer-throttling',
+	'--disable-backgrounding-occluded-windows',
+	'--disable-renderer-backgrounding'
 ];
-
-const throttlingConfig = {
-  throttling: {
-    rttMs: 40,
-    throughputKbps: 10 * 1024,
-    cpuSlowdownMultiplier: 1,
-    requestLatencyMs: 0,
-    downloadThroughputKbps: 0,
-    uploadThroughputKbps: 0,
-  }
+// options for simulating a faster internet connection
+const lighthouseOptions = {
+    throttling: {
+        rttMs: 40,
+        throughputKbps: 10*1024,
+        cpuSlowdownMultiplier: 1,
+        requestLatencyMs: 0,
+        downloadThroughputKbps: 0,
+        uploadThroughputKbps: 0
+    },
+    onlyCategories: ['performance']
 };
 
-const lighthouseFlags = {
-  output: 'json',
-  onlyCategories: ['performance'],
-  logLevel: 'info',
-};
 
-const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
-  const lighthouse = (await import('lighthouse')).default;
-  let chrome;
+const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    const lighthouse = (await import('lighthouse')).default;
+    let chrome;
+    let result = [];
+    try {
+        chrome = await chromeLauncher.launch({ chromeFlags });
 
-  try {
-    chrome = await chromeLauncher.launch({ chromeFlags });
+             let flags = {
+            //logLevel: 'debug',	
+            port: chrome.port,
+            output: 'json',
+            maxWaitForLoad: 450000,
+            maxWaitForFcp: 450000
+        };
 
-    const flags = {
-      port: chrome.port,
-      ...lighthouseFlags,
-      ...(useFasterConnection ? throttlingConfig : {})
-    };
+        if (fasterInternetConnection === true) {
+            flags = {
+                ...lighthouseOptions,
+                ...flags
+            };
+        }
 
-    // Add default preset if not set
-    const config = {
-      preset: 'lighthouse:default',
-      ...userConfig,
-    };
-
-    const result = await lighthouse(url, flags, config);
-    await chrome.kill();
+        result = await lighthouse(url, flags, config);
+        await chrome.kill();
+    } catch (err) {
+        console.log("Error appeared while running lighthouse", err);
+        try {
+            if (chrome !== undefined) {
+                await chrome.kill();
+            }
+        } catch(e) {
+            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
+        }
+        throw err;
+    }
     return result;
-  } catch (err) {
-    console.error('Error running Lighthouse:', err);
-    if (chrome) await chrome.kill();
-    throw err;
-  }
 };
 
 const createReport = async (results) => {
-  const { ReportGenerator } = await import('lighthouse/report/generator/report-generator.js');
-  return ReportGenerator.generateReportHtml(results);
+    const { ReportGenerator } = await import('lighthouse/report/generator/report-generator.js');
+    return ReportGenerator.generateReportHtml(results);
 };
 
+
 module.exports = {
-  launchChromeAndRunLighthouse,
-  createReport
-};
+	launchChromeAndRunLighthouse,
+	createReport
+}
