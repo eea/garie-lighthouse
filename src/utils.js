@@ -1,17 +1,14 @@
 const chromeLauncher = require('chrome-launcher');
 
 const chromeFlags = [
-	'--headless',
-	'--no-sandbox',
 	'--disable-gpu',
-	'--disable-dev-shm-usage',
-	'--disable-setuid-sandbox',
+	'--headless',
 	'--no-zygote',
-	'--no-first-run',
-	'--disable-background-timer-throttling',
-	'--disable-backgrounding-occluded-windows',
-	'--disable-renderer-backgrounding'
+	'--no-sandbox',
+	'--headless',
+    '--collect.settings.maxWaitForFcp="450000"'
 ];
+
 // options for simulating a faster internet connection
 const lighthouseOptions = {
     throttling: {
