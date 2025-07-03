@@ -9,7 +9,34 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
+// Mutex system to prevent parallel lighthouse execution
+class LighthouseMutex {
+  constructor() {
+    this.queue = [];
+    this.running = false;
+  }
 
+  async acquire() {
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+      this.processQueue();
+    });
+  }
+
+  release() {
+    this.running = false;
+    this.processQueue();
+  }
+
+  processQueue() {
+    if (this.running || this.queue.length === 0) return;
+    this.running = true;
+    const next = this.queue.shift();
+    next();
+  }
+}
+
+const lighthouseMutex = new LighthouseMutex();
 
 const fasterInternetOptions = {
   throttling: {
@@ -24,7 +51,10 @@ const fasterInternetOptions = {
 
 
 const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
- const lighthouse = (await import('lighthouse')).default;
+  // Use mutex to ensure only one lighthouse runs at a time
+  await lighthouseMutex.acquire();
+  
+  const lighthouse = (await import('lighthouse')).default;
   let chrome;
   let result;
 
@@ -78,6 +108,9 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       }
     }
     throw err;
+  } finally {
+    // Always release the mutex
+    lighthouseMutex.release();
   }
 };
 const createReport = async (results) => {
