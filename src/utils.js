@@ -9,18 +9,6 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// options for simulating a faster internet connection
-const lighthouseOptions = {
-    throttling: {
-        rttMs: 40,
-        throughputKbps: 10*1024,
-        cpuSlowdownMultiplier: 1,
-        requestLatencyMs: 0,
-        downloadThroughputKbps: 0,
-        uploadThroughputKbps: 0
-    },
-    onlyCategories: ['performance']
-};
 
 
 const fasterInternetOptions = {
@@ -30,7 +18,7 @@ const fasterInternetOptions = {
     cpuSlowdownMultiplier: 1,
     requestLatencyMs: 0,
     downloadThroughputKbps: 0,
-    uploadThroughputKbps: 0  // ✅ typo fixed here
+    uploadThroughputKbps: 0 
   }
 };
 
@@ -41,7 +29,11 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
   let result;
 
   try {
-    chrome = await chromeLauncher.launch({ chromeFlags });
+    const uniquePort = Math.floor(Math.random() * 10000) + 9000;
+    chrome = await chromeLauncher.launch({ 
+      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
+      port: uniquePort
+    });
 
     const flags = {
       port: chrome.port,
@@ -53,6 +45,9 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       preset: 'lighthouse:default',
       settings: {
         onlyCategories: ['performance'],
+        maxWaitForFcp: 15000,
+        maxWaitForLoad: 35000,
+        skipAudits: ['uses-http2'],
         ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
       },
     };
