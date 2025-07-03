@@ -44,6 +44,7 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     const defaultConfig = {
       preset: 'lighthouse:default',
       settings: {
+        onlyCategories: ['performance'],
         maxWaitForFcp: 15000,
         maxWaitForLoad: 35000,
         skipAudits: ['uses-http2'],

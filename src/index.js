@@ -64,7 +64,6 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
             (await launchChromeAndRunLighthouse(url, {
   extends: 'lighthouse:default',
   settings: {
-    onlyCategories: ['performance']
   }
 }, fasterInternetConnection)) || {};
 
