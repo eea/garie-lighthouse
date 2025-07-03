@@ -26,44 +26,60 @@ const lighthouseOptions = {
 };
 
 
-const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
-    const lighthouse = (await import('lighthouse')).default;
-    let chrome;
-    let result = [];
-    try {
-        chrome = await chromeLauncher.launch({ chromeFlags });
-
-             let flags = {
-            //logLevel: 'debug',	
-            port: chrome.port,
-            output: 'json',
-            maxWaitForLoad: 450000,
-            maxWaitForFcp: 450000
-        };
-
-        if (fasterInternetConnection === true) {
-            flags = {
-                ...lighthouseOptions,
-                ...flags
-            };
-        }
-
-        result = await lighthouse(url, flags, config);
-        await chrome.kill();
-    } catch (err) {
-        console.log("Error appeared while running lighthouse", err);
-        try {
-            if (chrome !== undefined) {
-                await chrome.kill();
-            }
-        } catch(e) {
-            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
-        }
-        throw err;
-    }
-    return result;
+const fasterInternetOptions = {
+  throttling: {
+    rttMs: 40,
+    throughputKbps: 10 * 1024,
+    cpuSlowdownMultiplier: 1,
+    requestLatencyMs: 0,
+    downloadThroughputKbps: 0,
+    uploadThroughputKbps: 0  // ✅ typo fixed here
+  }
 };
 
+
+const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
+ const lighthouse = (await import('lighthouse')).default;
+  let chrome;
+  let result;
+
+  try {
+    chrome = await chromeLauncher.launch({ chromeFlags });
+
+    const flags = {
+      port: chrome.port,
+      output: 'json',
+      logLevel: 'info',
+    };
+
+    const defaultConfig = {
+      preset: 'lighthouse:default',
+      settings: {
+        onlyCategories: ['performance'],
+        ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
+      },
+    };
+
+    const mergedConfig = {
+      ...defaultConfig,
+      ...userConfig,
+    };
+
+    result = await lighthouse(url, flags, mergedConfig);
+    await chrome.kill();
+    return result;
+  } catch (err) {
+    console.error('Error appeared while running lighthouse', err);
+    if (chrome) {
+      try {
+        await chrome.kill();
+      } catch (e) {
+        console.error('Error trying to kill Chrome after failure', e);
+      }
+    }
+    throw err;
+  }
+};
 const createReport = async (results) => {
     const { ReportGenerator } = await import('lighthouse/report/generator/report-generator.js');
     return ReportGenerator.generateReportHtml(results);

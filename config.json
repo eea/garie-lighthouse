@@ -1,7 +1,8 @@
 {
   "plugins":{
         "lighthouse":{
-            "cron": "0 */4 * * *"
+            "cron": "0 */4 * * *",
+            "maxCpus":"1"
         }
     },
   "urls": [
