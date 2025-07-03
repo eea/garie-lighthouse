@@ -5,8 +5,9 @@ const chromeFlags = [
 	'--headless',
 	'--no-zygote',
 	'--no-sandbox',
-	'--headless',
-    '--collect.settings.maxWaitForFcp="450000"'
+	'--disable-dev-shm-usage',
+	'--disable-setuid-sandbox',
+	'--no-first-run'
 ];
 // options for simulating a faster internet connection
 const lighthouseOptions = {
@@ -32,7 +33,9 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
              let flags = {
             //logLevel: 'debug',	
             port: chrome.port,
-            output: 'json'
+            output: 'json',
+            maxWaitForLoad: 450000,
+            maxWaitForFcp: 450000
         };
 
         if (fasterInternetConnection === true) {
