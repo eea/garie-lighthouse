@@ -29,16 +29,22 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
   let result;
 
   try {
+    // Clear any existing performance marks to prevent conflicts
+    if (typeof performance !== 'undefined' && performance.clearMarks) {
+      performance.clearMarks();
+      performance.clearMeasures();
+    }
+
     const uniquePort = Math.floor(Math.random() * 10000) + 9000;
     chrome = await chromeLauncher.launch({ 
-      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
+      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`, `--user-data-dir=/tmp/chrome-${uniquePort}`],
       port: uniquePort
     });
 
     const flags = {
       port: chrome.port,
       output: 'json',
-      logLevel: 'info',
+      logLevel: 'error',
     };
 
     const defaultConfig = {
@@ -48,6 +54,8 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
         maxWaitForFcp: 15000,
         maxWaitForLoad: 35000,
         skipAudits: ['uses-http2'],
+        disableStorageReset: true,
+        clearStorageTypes: [],
         ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
       },
     };
