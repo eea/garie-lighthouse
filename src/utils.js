@@ -5,13 +5,15 @@ const chromeFlags = [
 	'--headless',
 	'--no-zygote',
 	'--no-sandbox',
-	'--headless',
+	'--disable-dev-shm-usage',
+	'--max_old_space_size=4096',
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Mutex system to prevent parallel lighthouse execution
-class LighthouseMutex {
+// Shared Chrome instance manager
+class ChromeManager {
   constructor() {
+    this.chrome = null;
     this.queue = [];
     this.running = false;
   }
@@ -34,9 +36,30 @@ class LighthouseMutex {
     const next = this.queue.shift();
     next();
   }
+
+  async getChrome() {
+    if (this.chrome && this.chrome.port) {
+      return this.chrome;
+    }
+
+    const uniquePort = Math.floor(Math.random() * 10000) + 9000;
+    this.chrome = await chromeLauncher.launch({ 
+      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
+      port: uniquePort
+    });
+    
+    return this.chrome;
+  }
+
+  async killChrome() {
+    if (this.chrome) {
+      await this.chrome.kill();
+      this.chrome = null;
+    }
+  }
 }
 
-const lighthouseMutex = new LighthouseMutex();
+const chromeManager = new ChromeManager();
 
 const fasterInternetOptions = {
   throttling: {
@@ -52,7 +75,7 @@ const fasterInternetOptions = {
 
 const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
   // Use mutex to ensure only one lighthouse runs at a time
-  await lighthouseMutex.acquire();
+  await chromeManager.acquire();
   
   const lighthouse = (await import('lighthouse')).default;
   let chrome;
@@ -65,11 +88,7 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       performance.clearMeasures();
     }
 
-    const uniquePort = Math.floor(Math.random() * 10000) + 9000;
-    chrome = await chromeLauncher.launch({ 
-      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`, `--user-data-dir=/tmp/chrome-${uniquePort}`],
-      port: uniquePort
-    });
+    chrome = await chromeManager.getChrome();
 
     const flags = {
       port: chrome.port,
@@ -83,8 +102,8 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
         maxWaitForFcp: 15000,
         maxWaitForLoad: 35000,
         skipAudits: ['uses-http2'],
-        disableStorageReset: true,
-        clearStorageTypes: [],
+        disableStorageReset: false,
+        clearStorageTypes: ['appcache', 'cookies', 'file_systems', 'indexeddb', 'local_storage', 'service_workers', 'websql'],
         ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
       },
     };
@@ -95,21 +114,21 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     };
 
     result = await lighthouse(url, flags, mergedConfig);
-    await chrome.kill();
     return result;
   } catch (err) {
     console.error('Error appeared while running lighthouse', err);
-    if (chrome) {
-      try {
-        await chrome.kill();
-      } catch (e) {
-        console.error('Error trying to kill Chrome after failure', e);
-      }
-    }
     throw err;
   } finally {
+    // Kill Chrome instance after each lighthouse run to prevent memory leaks
+    await chromeManager.killChrome();
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+    
     // Always release the mutex
-    lighthouseMutex.release();
+    chromeManager.release();
   }
 };
 const createReport = async (results) => {
