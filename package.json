@@ -13,7 +13,7 @@
     "dependencies": {
         "garie-plugin": "https://github.com/eea/garie-plugin#0.0.45",
         "chrome-launcher": "^1.2.0",
-        "lighthouse": "^12.7.1"
+        "lighthouse": "12.7.1"
     },
     "devDependencies": {
         "codecov": "^3.0.0",
