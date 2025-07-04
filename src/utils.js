@@ -50,6 +50,13 @@ class ChromeManager {
     
     return this.chrome;
   }
+
+  async killChrome() {
+    if (this.chrome) {
+      await this.chrome.kill();
+      this.chrome = null;
+    }
+  }
 }
 
 const chromeManager = new ChromeManager();
@@ -112,6 +119,14 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     console.error('Error appeared while running lighthouse', err);
     throw err;
   } finally {
+    // Kill Chrome instance after each lighthouse run to prevent memory leaks
+    await chromeManager.killChrome();
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+    
     // Always release the mutex
     chromeManager.release();
   }
