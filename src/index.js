@@ -62,7 +62,10 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
     try {
         const lighthouse =
             (await launchChromeAndRunLighthouse(url, {
-                extends: 'lighthouse:default'
+            extends: 'lighthouse:default',
+            settings: {
+                onlyCategories: ['performance', 'pwa', 'accessibility', 'best-practices', 'seo']
+            }
             }, fasterInternetConnection)) || {};
 
         if (fasterInternetConnection) {
@@ -79,7 +82,7 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
             resultsLocation = path.join(reportFolder, `/lighthouse.html`);
         }
 
-        const report = createReport(lighthouse.lhr);
+        const report = await createReport(lighthouse.lhr);
         fs.outputFile(resultsLocation, report)
         .then(() => console.log(`Saved report for ${url}`))
         .catch(err => {

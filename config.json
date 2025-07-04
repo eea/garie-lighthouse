@@ -1,12 +1,13 @@
 {
   "plugins":{
         "lighthouse":{
-            "cron": "0 */4 * * *"
-        }
+            "cron": "0 */4 * * *",
+            "maxCpus":"2"      
+          }
     },
   "urls": [
     {
-      "url": "https://www.eea.europa.eu/"
+      "url": "https://www.eea.europa.eu/en"
     },
     {
       "url": "https://biodiversity.europa.eu/"
