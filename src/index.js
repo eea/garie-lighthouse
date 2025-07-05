@@ -112,13 +112,13 @@ const myGetData = async (item) => {
             const { reportDir } = item
             const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
 
-            const data_fast = await getAndParseLighthouseData(item, url, true, reportFolder);
+            let data_fast = await getAndParseLighthouseData(item, url, true, reportFolder);
             // Force garbage collection between runs
             if (global.gc) {
                 global.gc();
             }
             
-            const data = await getAndParseLighthouseData(item, url, false, reportFolder);
+            let data = await getAndParseLighthouseData(item, url, false, reportFolder);
             const full_data = {
                 ...data,
                 ...data_fast
