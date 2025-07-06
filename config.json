@@ -40,7 +40,7 @@
           },
           "lighthouse":{
             "cron":"30 6 * * *",
-            "maxCpus":1
+            "maxCpus":2
           },
           "webbkoll":{
             "cron":"30 7 * * *"

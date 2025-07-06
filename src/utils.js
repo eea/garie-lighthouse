@@ -1,5 +1,29 @@
 const chromeLauncher = require('chrome-launcher');
 
+// Queue system to prevent parallel execution
+let lighthouseQueue = [];
+let lighthouseInUse = false;
+
+const waitForLighthouse = async () => {
+    return new Promise((resolve) => {
+        if (!lighthouseInUse) {
+            lighthouseInUse = true;
+            resolve();
+        } else {
+            lighthouseQueue.push(resolve);
+        }
+    });
+};
+
+const releaseLighthouse = () => {
+    lighthouseInUse = false;
+    if (lighthouseQueue.length > 0) {
+        const next = lighthouseQueue.shift();
+        lighthouseInUse = true;
+        next();
+    }
+};
+
 const chromeFlags = [
     '--disable-gpu',
     '--headless',
@@ -22,6 +46,8 @@ const lighthouseOptions = {
 };
 
 const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    await waitForLighthouse();
+    
     let chrome;
     let result = [];
     try {
@@ -52,6 +78,8 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
             console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
         }
         throw err;
+    } finally {
+        releaseLighthouse();
     }
     return result;
 };
