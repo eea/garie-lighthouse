@@ -23,7 +23,7 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Lightweight Chrome launcher - create new instance per request
+// Strict sequential Chrome launcher with longer delays
 class ChromeManager {
   constructor() {
     this.queue = [];
@@ -39,7 +39,8 @@ class ChromeManager {
 
   release() {
     this.running = false;
-    this.processQueue();
+    // Add delay before processing next
+    setTimeout(() => this.processQueue(), 3000);
   }
 
   processQueue() {
@@ -120,21 +121,37 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
 
     result = await lighthouse(url, flags, mergedConfig);
     
-    // Keep only essential data, clear everything else
+    // Keep only absolutely essential data
     if (result && result.lhr) {
-      const essentialData = {
-        categories: result.lhr.categories,
-        audits: {
-          metrics: result.lhr.audits.metrics,
-          'errors-in-console': result.lhr.audits['errors-in-console'],
-          'time-to-first-byte': result.lhr.audits['time-to-first-byte'],
-          'interactive': result.lhr.audits['interactive'],
-          'redirects': result.lhr.audits['redirects']
-        }
+      const minimalData = {
+        categories: {},
+        audits: {}
       };
       
-      // Replace the entire result with minimal data
-      result.lhr = essentialData;
+      // Copy only scores, not full category data
+      if (result.lhr.categories) {
+        for (const [key, category] of Object.entries(result.lhr.categories)) {
+          minimalData.categories[key] = { 
+            id: category.id, 
+            score: category.score 
+          };
+        }
+      }
+      
+      // Copy only essential audit data
+      const essentialAudits = ['metrics', 'errors-in-console', 'time-to-first-byte', 'interactive', 'redirects'];
+      for (const auditKey of essentialAudits) {
+        if (result.lhr.audits[auditKey]) {
+          const audit = result.lhr.audits[auditKey];
+          minimalData.audits[auditKey] = {
+            details: audit.details,
+            rawValue: audit.rawValue
+          };
+        }
+      }
+      
+      // Replace with minimal data
+      result.lhr = minimalData;
     }
     
     return result;
