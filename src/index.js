@@ -28,7 +28,6 @@ const filterResults = (data = {}, fasterInternetConnection) => {
             continue;
         }
 
-        // For now don't report on any observered metrics
         if (metricItem.indexOf('observed') === -1) {
             report[metricItem] = metricItems[metricItem];
         }
@@ -57,15 +56,11 @@ const filterResults = (data = {}, fasterInternetConnection) => {
     return cleanReport;
 };
 
-
 const getAndParseLighthouseData = async(item, url, fasterInternetConnection, reportFolder) => {
     try {
         const lighthouse =
             (await launchChromeAndRunLighthouse(url, {
-            extends: 'lighthouse:default',
-            settings: {
-                onlyCategories: ['performance', 'pwa', 'accessibility', 'best-practices', 'seo']
-            }
+                extends: 'lighthouse:default'
             }, fasterInternetConnection)) || {};
 
         if (fasterInternetConnection) {
@@ -73,7 +68,6 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         } else {
             console.log(`Successfully got default data for ${url}`);
         }
-
 
         let resultsLocation = "";
         if (fasterInternetConnection) {
@@ -98,7 +92,6 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
 }
 
 const myGetData = async (item) => {
-    //cleanup core dumps in home - core.[0-9]*
     let regex = /^core[.][0-9]*$/
     fs.readdirSync('.')
       .filter(f => regex.test(f))
@@ -127,9 +120,8 @@ const myGetData = async (item) => {
     });
 };
 
-
-
 console.log("Start");
+console.log("Config maxCpus:", config?.plugins?.lighthouse?.maxCpus);
 
 
 const main = async () => {
