@@ -6,14 +6,26 @@ const chromeFlags = [
 	'--no-zygote',
 	'--no-sandbox',
 	'--disable-dev-shm-usage',
-	'--max_old_space_size=4096',
+	'--memory-pressure-off',
+	'--disable-features=VizDisplayCompositor',
+	'--disable-background-timer-throttling',
+	'--disable-background-networking',
+	'--disable-backgrounding-occluded-windows',
+	'--disable-breakpad',
+	'--disable-component-extensions-with-background-pages',
+	'--disable-extensions',
+	'--disable-features=TranslateUI',
+	'--disable-ipc-flooding-protection',
+	'--disable-renderer-backgrounding',
+	'--force-color-profile=srgb',
+	'--metrics-recording-only',
+	'--no-first-run',
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Shared Chrome instance manager
+// Lightweight Chrome launcher - create new instance per request
 class ChromeManager {
   constructor() {
-    this.chrome = null;
     this.queue = [];
     this.running = false;
   }
@@ -37,25 +49,12 @@ class ChromeManager {
     next();
   }
 
-  async getChrome() {
-    if (this.chrome && this.chrome.port) {
-      return this.chrome;
-    }
-
+  async createChrome() {
     const uniquePort = Math.floor(Math.random() * 10000) + 9000;
-    this.chrome = await chromeLauncher.launch({ 
+    return await chromeLauncher.launch({ 
       chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
       port: uniquePort
     });
-    
-    return this.chrome;
-  }
-
-  async killChrome() {
-    if (this.chrome) {
-      await this.chrome.kill();
-      this.chrome = null;
-    }
   }
 }
 
@@ -69,7 +68,9 @@ const fasterInternetOptions = {
     requestLatencyMs: 0,
     downloadThroughputKbps: 0,
     uploadThroughputKbps: 0 
-  }
+  },
+  // Disable heavy audits for faster connection tests
+  skipAudits: ['screenshot-thumbnails', 'final-screenshot', 'full-page-screenshot']
 };
 
 
@@ -88,7 +89,8 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       performance.clearMeasures();
     }
 
-    chrome = await chromeManager.getChrome();
+    // Create fresh Chrome instance for each request
+    chrome = await chromeManager.createChrome();
 
     const flags = {
       port: chrome.port,
@@ -101,7 +103,7 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       settings: {
         maxWaitForFcp: 15000,
         maxWaitForLoad: 35000,
-        skipAudits: ['uses-http2'],
+        skipAudits: ['uses-http2', 'screenshot-thumbnails', 'final-screenshot'],
         disableStorageReset: false,
         clearStorageTypes: ['appcache', 'cookies', 'file_systems', 'indexeddb', 'local_storage', 'service_workers', 'websql'],
         ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
@@ -114,13 +116,30 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     };
 
     result = await lighthouse(url, flags, mergedConfig);
+    
+    // Aggressively clear large objects from result to reduce memory usage
+    if (result && result.lhr) {
+      delete result.lhr.artifacts;
+      delete result.lhr.configSettings;
+      delete result.lhr.i18n;
+      delete result.lhr.timing;
+      delete result.lhr.stackPacks;
+      delete result.lhr.fullPageScreenshot;
+    }
+    
     return result;
   } catch (err) {
     console.error('Error appeared while running lighthouse', err);
     throw err;
   } finally {
-    // Kill Chrome instance after each lighthouse run to prevent memory leaks
-    await chromeManager.killChrome();
+    // Always kill Chrome instance immediately after use
+    if (chrome) {
+      try {
+        await chrome.kill();
+      } catch (killErr) {
+        console.error('Error killing Chrome:', killErr);
+      }
+    }
     
     // Force garbage collection if available
     if (global.gc) {
