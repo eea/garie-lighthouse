@@ -25,56 +25,53 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Simple global Chrome singleton with mutex
-let globalChromeLock = false;
-let chromeQueue = [];
-
-const waitForChrome = async () => {
-  return new Promise((resolve) => {
-    if (!globalChromeLock) {
-      globalChromeLock = true;
-      resolve();
-    } else {
-      chromeQueue.push(resolve);
-      console.log(`[QUEUE] Added to queue, position: ${chromeQueue.length}`);
-    }
-  });
-};
-
-const releaseChrome = () => {
-  globalChromeLock = false;
-  if (global.gc) {
-    global.gc();
-  }
-  
-  // Process next in queue after delay
-  setTimeout(() => {
-    if (chromeQueue.length > 0) {
-      const next = chromeQueue.shift();
-      globalChromeLock = true;
-      next();
-    }
-  }, 3000);
-};
-
+// Persistent Chrome instance - start once, use for all sites
 class ChromeManager {
+  constructor() {
+    this.chrome = null;
+    this.queue = [];
+    this.running = false;
+  }
+
   async acquire() {
-    await waitForChrome();
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+      this.processQueue();
+    });
   }
 
   release() {
-    releaseChrome();
+    this.running = false;
+    if (global.gc) {
+      global.gc();
+    }
+    // Short delay then process next
+    setTimeout(() => this.processQueue(), 1000);
   }
 
-  async createChrome() {
+  processQueue() {
+    if (this.running || this.queue.length === 0) return;
+    this.running = true;
+    const next = this.queue.shift();
+    next();
+  }
+
+  async getOrCreateChrome() {
+    // Reuse existing Chrome instance
+    if (this.chrome && this.chrome.port) {
+      console.log(`[REUSE] Using existing Chrome process ${this.chrome.pid} on port ${this.chrome.port}`);
+      return this.chrome;
+    }
+
+    // Create new Chrome only if needed
     const uniquePort = Math.floor(Math.random() * 10000) + 9000;
-    const chrome = await chromeLauncher.launch({ 
+    this.chrome = await chromeLauncher.launch({ 
       chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
       port: uniquePort
     });
     
-    console.log(`[SINGLETON] Started Chrome process ${chrome.pid} on port ${chrome.port}`);
-    return chrome;
+    console.log(`[NEW] Started persistent Chrome process ${this.chrome.pid} on port ${this.chrome.port}`);
+    return this.chrome;
   }
 }
 
@@ -109,8 +106,8 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
       performance.clearMeasures();
     }
 
-    // Create fresh Chrome instance for each request
-    chrome = await chromeManager.createChrome();
+    // Get or reuse existing Chrome instance
+    chrome = await chromeManager.getOrCreateChrome();
 
     const flags = {
       port: chrome.port,
@@ -144,9 +141,18 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     console.error('Error appeared while running lighthouse', err);
     throw err;
   } finally {
-    if (chrome) {
-      await chrome.kill();
+    // Keep Chrome alive, just clean up result
+    console.log(`[KEEP-ALIVE] Chrome process ${chrome?.pid} stays running for reuse`);
+    
+    // Clear result object completely
+    result = null;
+    
+    // Force garbage collection
+    if (global.gc) {
+      global.gc();
     }
+    
+    // Always release the mutex
     chromeManager.release();
   }
 };
