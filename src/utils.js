@@ -63,7 +63,7 @@ const fasterInternetOptions = {
     uploadThroughputKbps: 0 
   },
   // Disable heavy audits for faster connection tests
-  skipAudits: ['screenshot-thumbnails', 'final-screenshot', 'full-page-screenshot']
+
 };
 
 
@@ -195,13 +195,9 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         console.log(`Saved report for ${url}`);
 
         const data = filterResults(lighthouse.lhr, fasterInternetConnection);
+      
+       
         
-        // Clear lighthouse result from memory immediately after filtering
-        if (lighthouse && lighthouse.lhr) {
-            lighthouse.lhr = null;
-        }
-        let lighthouseCleared = lighthouse;
-        lighthouseCleared = null;
         
         return data;
     } catch (err) {
