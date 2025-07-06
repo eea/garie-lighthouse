@@ -121,38 +121,7 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
 
     result = await lighthouse(url, flags, mergedConfig);
     
-    // Keep only absolutely essential data
-    if (result && result.lhr) {
-      const minimalData = {
-        categories: {},
-        audits: {}
-      };
-      
-      // Copy only scores, not full category data
-      if (result.lhr.categories) {
-        for (const [key, category] of Object.entries(result.lhr.categories)) {
-          minimalData.categories[key] = { 
-            id: category.id, 
-            score: category.score 
-          };
-        }
-      }
-      
-      // Copy only essential audit data
-      const essentialAudits = ['metrics', 'errors-in-console', 'time-to-first-byte', 'interactive', 'redirects'];
-      for (const auditKey of essentialAudits) {
-        if (result.lhr.audits[auditKey]) {
-          const audit = result.lhr.audits[auditKey];
-          minimalData.audits[auditKey] = {
-            details: audit.details,
-            rawValue: audit.rawValue
-          };
-        }
-      }
-      
-      // Replace with minimal data
-      result.lhr = minimalData;
-    }
+    // Keep all data for complete HTML reports
     
     return result;
   } catch (err) {
