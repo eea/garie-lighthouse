@@ -25,33 +25,45 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Strict sequential Chrome launcher with longer delays
-class ChromeManager {
-  constructor() {
-    this.queue = [];
-    this.running = false;
-  }
+// Simple global Chrome singleton with mutex
+let globalChromeLock = false;
+let chromeQueue = [];
 
+const waitForChrome = async () => {
+  return new Promise((resolve) => {
+    if (!globalChromeLock) {
+      globalChromeLock = true;
+      resolve();
+    } else {
+      chromeQueue.push(resolve);
+      console.log(`[QUEUE] Added to queue, position: ${chromeQueue.length}`);
+    }
+  });
+};
+
+const releaseChrome = () => {
+  globalChromeLock = false;
+  if (global.gc) {
+    global.gc();
+  }
+  
+  // Process next in queue after delay
+  setTimeout(() => {
+    if (chromeQueue.length > 0) {
+      const next = chromeQueue.shift();
+      globalChromeLock = true;
+      next();
+    }
+  }, 3000);
+};
+
+class ChromeManager {
   async acquire() {
-    return new Promise((resolve) => {
-      this.queue.push(resolve);
-      this.processQueue();
-    });
+    await waitForChrome();
   }
 
   release() {
-    this.running = false;
-    if (global.gc) {
-      global.gc();
-    }
-    this.processQueue();
-  }
-
-  processQueue() {
-    if (this.running || this.queue.length === 0) return;
-    this.running = true;
-    const next = this.queue.shift();
-    next();
+    releaseChrome();
   }
 
   async createChrome() {
@@ -61,7 +73,7 @@ class ChromeManager {
       port: uniquePort
     });
     
-    console.log(`Started Chrome process ${chrome.pid} on port ${chrome.port}`);
+    console.log(`[SINGLETON] Started Chrome process ${chrome.pid} on port ${chrome.port}`);
     return chrome;
   }
 }
