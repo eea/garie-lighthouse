@@ -90,6 +90,11 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         });
 
         const data = filterResults(lighthouse.lhr, fasterInternetConnection);
+        
+        // Clear lighthouse result from memory immediately after filtering
+        lighthouse.lhr = null;
+        lighthouse = null;
+        
         return data;
     } catch (err) {
         console.log(`Failed to run lighthouse for ${url}`, err);
@@ -113,20 +118,32 @@ const myGetData = async (item) => {
             const reportFolder = garie_plugin.utils.helpers.reportDirNow(reportDir);
 
             let data_fast = await getAndParseLighthouseData(item, url, true, reportFolder);
-            // Force garbage collection between runs
+            
+            // Wait and force cleanup between runs
+            await new Promise(resolve => setTimeout(resolve, 2000));
             if (global.gc) {
                 global.gc();
             }
             
             let data = await getAndParseLighthouseData(item, url, false, reportFolder);
+            
+            // Wait and cleanup after both runs
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (global.gc) {
+                global.gc();
+            }
             const full_data = {
                 ...data,
                 ...data_fast
             };
             
-            // Clear references to help GC
+            // Clear references and force GC after each URL
             data_fast = null;
             data = null;
+            
+            if (global.gc) {
+                global.gc();
+            }
             
             resolve(full_data);
 

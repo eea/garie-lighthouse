@@ -51,10 +51,13 @@ class ChromeManager {
 
   async createChrome() {
     const uniquePort = Math.floor(Math.random() * 10000) + 9000;
-    return await chromeLauncher.launch({ 
+    const chrome = await chromeLauncher.launch({ 
       chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
       port: uniquePort
     });
+    
+    console.log(`Started Chrome process ${chrome.pid} on port ${chrome.port}`);
+    return chrome;
   }
 }
 
@@ -117,14 +120,21 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
 
     result = await lighthouse(url, flags, mergedConfig);
     
-    // Aggressively clear large objects from result to reduce memory usage
+    // Keep only essential data, clear everything else
     if (result && result.lhr) {
-      delete result.lhr.artifacts;
-      delete result.lhr.configSettings;
-      delete result.lhr.i18n;
-      delete result.lhr.timing;
-      delete result.lhr.stackPacks;
-      delete result.lhr.fullPageScreenshot;
+      const essentialData = {
+        categories: result.lhr.categories,
+        audits: {
+          metrics: result.lhr.audits.metrics,
+          'errors-in-console': result.lhr.audits['errors-in-console'],
+          'time-to-first-byte': result.lhr.audits['time-to-first-byte'],
+          'interactive': result.lhr.audits['interactive'],
+          'redirects': result.lhr.audits['redirects']
+        }
+      };
+      
+      // Replace the entire result with minimal data
+      result.lhr = essentialData;
     }
     
     return result;
@@ -135,14 +145,30 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     // Always kill Chrome instance immediately after use
     if (chrome) {
       try {
+        console.log(`Killing Chrome process ${chrome.pid}`);
         await chrome.kill();
+        
+        // Force kill if still running
+        if (chrome.pid) {
+          try {
+            process.kill(chrome.pid, 'SIGKILL');
+          } catch (e) {
+            // Process already dead
+          }
+        }
       } catch (killErr) {
         console.error('Error killing Chrome:', killErr);
       }
+      chrome = null;
     }
     
-    // Force garbage collection if available
+    // Clear result object completely
+    result = null;
+    
+    // Force multiple garbage collections with delay
     if (global.gc) {
+      global.gc();
+      await new Promise(resolve => setTimeout(resolve, 500));
       global.gc();
     }
     
