@@ -25,10 +25,10 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Simple global Chrome management
+// Simple global Chrome management with periodic restart
 let globalChrome = null;
-let chromeQueue = [];
 let chromeInUse = false;
+let chromeUsageCount = 0;
 
 const getChrome = async () => {
   // Wait if Chrome is busy
@@ -37,6 +37,17 @@ const getChrome = async () => {
   }
   
   chromeInUse = true;
+  chromeUsageCount++;
+  
+  // Restart Chrome every 10 uses to clear memory
+  if (globalChrome && chromeUsageCount > 5) {
+    console.log(`[RESTART] Killing Chrome ${globalChrome.pid} after 5 uses`);
+    try {
+      await globalChrome.kill();
+    } catch (e) {}
+    globalChrome = null;
+    chromeUsageCount = 0;
+  }
   
   // Create Chrome if doesn't exist
   if (!globalChrome) {
@@ -47,7 +58,7 @@ const getChrome = async () => {
     });
     console.log(`[NEW] Started Chrome ${globalChrome.pid} on port ${globalChrome.port}`);
   } else {
-    console.log(`[REUSE] Using Chrome ${globalChrome.pid}`);
+    console.log(`[REUSE] Using Chrome ${globalChrome.pid} (${chromeUsageCount}/10)`);
   }
   
   return globalChrome;
