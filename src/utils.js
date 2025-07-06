@@ -25,49 +25,31 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Simple global Chrome management with periodic restart
-let globalChrome = null;
+// Simple sequential Chrome management like the old version
+let chromeQueue = [];
 let chromeInUse = false;
-let chromeUsageCount = 0;
 
-const getChrome = async () => {
-  // Wait if Chrome is busy
-  while (chromeInUse) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  chromeInUse = true;
-  chromeUsageCount++;
-  
-  // Restart Chrome every 10 uses to clear memory
-  if (globalChrome && chromeUsageCount > 5) {
-    console.log(`[RESTART] Killing Chrome ${globalChrome.pid} after 5 uses`);
-    try {
-      await globalChrome.kill();
-    } catch (e) {}
-    globalChrome = null;
-    chromeUsageCount = 0;
-  }
-  
-  // Create Chrome if doesn't exist
-  if (!globalChrome) {
-    const port = Math.floor(Math.random() * 10000) + 9000;
-    globalChrome = await chromeLauncher.launch({ 
-      chromeFlags: [...chromeFlags, `--remote-debugging-port=${port}`],
-      port: port
-    });
-    console.log(`[NEW] Started Chrome ${globalChrome.pid} on port ${globalChrome.port}`);
-  } else {
-    console.log(`[REUSE] Using Chrome ${globalChrome.pid} (${chromeUsageCount}/10)`);
-  }
-  
-  return globalChrome;
+const waitForChrome = async () => {
+  return new Promise((resolve) => {
+    if (!chromeInUse) {
+      chromeInUse = true;
+      resolve();
+    } else {
+      chromeQueue.push(resolve);
+    }
+  });
 };
 
 const releaseChrome = () => {
   chromeInUse = false;
   if (global.gc) {
     global.gc();
+  }
+  // Process next in queue
+  if (chromeQueue.length > 0) {
+    const next = chromeQueue.shift();
+    chromeInUse = true;
+    next();
   }
 };
 
@@ -85,55 +67,46 @@ const fasterInternetOptions = {
 };
 
 
-const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
-  const lighthouse = (await import('lighthouse')).default;
-  let chrome;
-  let result;
-
-  try {
-    // Get Chrome instance (simple)
-    chrome = await getChrome();
-
-    const flags = {
-      port: chrome.port,
-      output: 'json',
-      logLevel: 'error',
-    };
-
-    const defaultConfig = {
-      preset: 'lighthouse:default',
-      settings: {
-        maxWaitForFcp: 15000,
-        maxWaitForLoad: 35000,
-        skipAudits: ['uses-http2', 'screenshot-thumbnails', 'final-screenshot'],
-        disableStorageReset: false,
-        clearStorageTypes: ['appcache', 'cookies', 'file_systems', 'indexeddb', 'local_storage', 'service_workers', 'websql'],
-        ...(useFasterConnection ? fasterInternetOptions.throttling : {}),
-      },
-    };
-
-    const mergedConfig = {
-      ...defaultConfig,
-      ...userConfig,
-    };
-
-    result = await lighthouse(url, flags, mergedConfig);
+const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
+    await waitForChrome();
     
-    // Keep reports but remove heavy objects
-    if (result && result.lhr) {
-      delete result.lhr.artifacts;
-      delete result.lhr.fullPageScreenshot;
+    let chrome;
+    let result = [];
+    
+    try {
+        chrome = await chromeLauncher.launch({ chromeFlags });
+
+        let flags = {
+            port: chrome.port,
+            output: 'json'
+        };
+
+        if (fasterInternetConnection === true) {
+            flags = {
+                ...fasterInternetOptions,
+                ...flags
+            };
+        }
+
+        const lighthouse = (await import('lighthouse')).default;
+        result = await lighthouse(url, flags, config);
+        
+        await chrome.kill();
+    } catch (err) {
+        console.log("Error appeared while running lighthouse", err);
+        try {
+            if (chrome !== undefined) {
+                await chrome.kill();
+            }
+        } catch(e) {
+            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
+        }
+        throw err;
+    } finally {
+        releaseChrome();
     }
     
     return result;
-  } catch (err) {
-    console.error('Error appeared while running lighthouse', err);
-    throw err;
-  } finally {
-    // Release Chrome for next use
-    releaseChrome();
-    result = null;
-  }
 };
 const createReport = async (results) => {
     const { ReportGenerator } = await import('lighthouse/report/generator/report-generator.js');
