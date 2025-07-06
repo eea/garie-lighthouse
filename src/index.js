@@ -5,15 +5,6 @@ const config = require('../config');
 
 const { launchChromeAndRunLighthouse, createReport } = require('./utils');
 
-
-
-
-
-
-
-
-
-
 const filterResults = (data = {}, fasterInternetConnection) => {
     const { categories = {}, audits = {} } = data;
 
