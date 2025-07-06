@@ -92,8 +92,9 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         const data = filterResults(lighthouse.lhr, fasterInternetConnection);
         
         // Clear lighthouse result from memory immediately after filtering
-        lighthouse.lhr = null;
-        lighthouse = null;
+        if (lighthouse && lighthouse.lhr) {
+            lighthouse.lhr = null;
+        }
         
         return data;
     } catch (err) {
