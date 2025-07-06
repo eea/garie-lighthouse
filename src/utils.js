@@ -234,6 +234,8 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         if (lighthouse && lighthouse.lhr) {
             lighthouse.lhr = null;
         }
+        let lighthouseCleared = lighthouse;
+        lighthouseCleared = null;
         
         return data;
     } catch (err) {

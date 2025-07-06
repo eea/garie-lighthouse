@@ -8,7 +8,7 @@
     "scripts": {
         "test": "ENV=test jest --coverage --config jest.config.json",
         "test:watch": "ENV=test jest --watch --notify --notifyMode=change --coverage --config jest.config.json",
-        "start": "node --max-old-space-size=4096 ./src/index.js"
+        "start": "node --max-old-space-size=8192 --expose-gc ./src/index.js"
 
     },
     "dependencies": {

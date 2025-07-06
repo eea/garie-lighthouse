@@ -17,6 +17,7 @@ const { getAndParseLighthouseData } = require('./utils');
 const myGetData = require('./myGetData');
 
 console.log("Start");
+console.log("Config maxCpus:", config?.plugins?.lighthouse?.maxCpus);
 
 
 const main = async () => {
