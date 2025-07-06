@@ -1,4 +1,6 @@
 const chromeLauncher = require('chrome-launcher');
+const path = require('path');
+const fs = require('fs-extra');
 
 const chromeFlags = [
 	'--disable-gpu',
@@ -39,8 +41,10 @@ class ChromeManager {
 
   release() {
     this.running = false;
-    // Add delay before processing next
-    setTimeout(() => this.processQueue(), 3000);
+    if (global.gc) {
+      global.gc();
+    }
+    this.processQueue();
   }
 
   processQueue() {
@@ -128,37 +132,9 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
     console.error('Error appeared while running lighthouse', err);
     throw err;
   } finally {
-    // Always kill Chrome instance immediately after use
     if (chrome) {
-      try {
-        console.log(`Killing Chrome process ${chrome.pid}`);
-        await chrome.kill();
-        
-        // Force kill if still running
-        if (chrome.pid) {
-          try {
-            process.kill(chrome.pid, 'SIGKILL');
-          } catch (e) {
-            // Process already dead
-          }
-        }
-      } catch (killErr) {
-        console.error('Error killing Chrome:', killErr);
-      }
-      chrome = null;
+      await chrome.kill();
     }
-    
-    // Clear result object completely
-    result = null;
-    
-    // Force multiple garbage collections with delay
-    if (global.gc) {
-      global.gc();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      global.gc();
-    }
-    
-    // Always release the mutex
     chromeManager.release();
   }
 };
@@ -167,8 +143,108 @@ const createReport = async (results) => {
     return ReportGenerator.generateReportHtml(results);
 };
 
+const filterResults = (data = {}, fasterInternetConnection) => {
+    const { categories = {}, audits = {} } = data;
+
+    const { metrics = {} } = audits;
+    const { details = {} } = metrics;
+    const { items = [] } = details;
+    const metricItems = items[0] || {};
+
+    const report = {};
+
+    for (const categoryName in categories) {
+        if (!Object.prototype.hasOwnProperty.call(categories, categoryName)) {
+            continue;
+        }
+
+        const category = categories[categoryName];
+        report[`${category.id}-score`] = Math.round(category.score * 100);
+    }
+    for (const metricItem in metricItems) {
+        if (!Object.prototype.hasOwnProperty.call(metricItems, metricItem)) {
+            continue;
+        }
+
+        // For now don't report on any observered metrics
+        if (metricItem.indexOf('observed') === -1) {
+            report[metricItem] = metricItems[metricItem];
+        }
+    }
+
+    const auditData = ['errors-in-console', 'time-to-first-byte', 'interactive', 'redirects'];
+
+    auditData.forEach(key => {
+        const { rawValue } = audits[key] || {};
+        if ((rawValue !== undefined) && (rawValue !== null)){
+            report[key] = rawValue;
+        }
+    });
+
+    var cleanReport = {};
+    Object.keys(report).forEach(key => {
+        const rawValue = report[key];
+        if (rawValue !== undefined){
+            if (fasterInternetConnection === true) {
+                cleanReport[key + '_fast'] = rawValue;
+            } else {
+                cleanReport[key] = rawValue;
+            }
+        }
+    });
+    return cleanReport;
+};
+
+
+const getAndParseLighthouseData = async(item, url, fasterInternetConnection, reportFolder) => {
+    try {
+        const lighthouse =
+            (await launchChromeAndRunLighthouse(url, {
+            extends: 'lighthouse:default',
+            settings: {
+                onlyCategories: ['performance', 'pwa', 'accessibility', 'best-practices', 'seo']
+            }
+            }, fasterInternetConnection)) || {};
+
+        if (fasterInternetConnection) {
+            console.log(`Successfully got fast data for ${url}`);
+        } else {
+            console.log(`Successfully got default data for ${url}`);
+        }
+
+
+        let resultsLocation = "";
+        if (fasterInternetConnection) {
+            resultsLocation = path.join(reportFolder, `/lighthouse_fast.html`);
+        } else {
+            resultsLocation = path.join(reportFolder, `/lighthouse.html`);
+        }
+
+        const report = await createReport(lighthouse.lhr);
+        await fs.outputFile(resultsLocation, report);
+        console.log(`Saved report for ${url}`);
+        
+        // Clear report from memory immediately
+        let reportCleared = report;
+        reportCleared = null;
+
+        const data = filterResults(lighthouse.lhr, fasterInternetConnection);
+        
+        // Clear lighthouse result from memory immediately after filtering
+        if (lighthouse && lighthouse.lhr) {
+            lighthouse.lhr = null;
+        }
+        
+        return data;
+    } catch (err) {
+        console.log(`Failed to run lighthouse for ${url}`, err);
+        throw err;
+    }
+}
 
 module.exports = {
 	launchChromeAndRunLighthouse,
-	createReport
+	createReport,
+	filterResults,
+	getAndParseLighthouseData
 }
