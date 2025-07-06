@@ -25,57 +25,40 @@ const chromeFlags = [
     '--collect.settings.maxWaitForFcp="450000"'
 ];
 
-// Persistent Chrome instance - start once, use for all sites
-class ChromeManager {
-  constructor() {
-    this.chrome = null;
-    this.queue = [];
-    this.running = false;
-  }
+// Simple global Chrome management
+let globalChrome = null;
+let chromeQueue = [];
+let chromeInUse = false;
 
-  async acquire() {
-    return new Promise((resolve) => {
-      this.queue.push(resolve);
-      this.processQueue();
+const getChrome = async () => {
+  // Wait if Chrome is busy
+  while (chromeInUse) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  chromeInUse = true;
+  
+  // Create Chrome if doesn't exist
+  if (!globalChrome) {
+    const port = Math.floor(Math.random() * 10000) + 9000;
+    globalChrome = await chromeLauncher.launch({ 
+      chromeFlags: [...chromeFlags, `--remote-debugging-port=${port}`],
+      port: port
     });
+    console.log(`[NEW] Started Chrome ${globalChrome.pid} on port ${globalChrome.port}`);
+  } else {
+    console.log(`[REUSE] Using Chrome ${globalChrome.pid}`);
   }
+  
+  return globalChrome;
+};
 
-  release() {
-    this.running = false;
-    if (global.gc) {
-      global.gc();
-    }
-    // Short delay then process next
-    setTimeout(() => this.processQueue(), 1000);
+const releaseChrome = () => {
+  chromeInUse = false;
+  if (global.gc) {
+    global.gc();
   }
-
-  processQueue() {
-    if (this.running || this.queue.length === 0) return;
-    this.running = true;
-    const next = this.queue.shift();
-    next();
-  }
-
-  async getOrCreateChrome() {
-    // Reuse existing Chrome instance
-    if (this.chrome && this.chrome.port) {
-      console.log(`[REUSE] Using existing Chrome process ${this.chrome.pid} on port ${this.chrome.port}`);
-      return this.chrome;
-    }
-
-    // Create new Chrome only if needed
-    const uniquePort = Math.floor(Math.random() * 10000) + 9000;
-    this.chrome = await chromeLauncher.launch({ 
-      chromeFlags: [...chromeFlags, `--remote-debugging-port=${uniquePort}`],
-      port: uniquePort
-    });
-    
-    console.log(`[NEW] Started persistent Chrome process ${this.chrome.pid} on port ${this.chrome.port}`);
-    return this.chrome;
-  }
-}
-
-const chromeManager = new ChromeManager();
+};
 
 const fasterInternetOptions = {
   throttling: {
@@ -92,22 +75,13 @@ const fasterInternetOptions = {
 
 
 const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConnection = false) => {
-  // Use mutex to ensure only one lighthouse runs at a time
-  await chromeManager.acquire();
-  
   const lighthouse = (await import('lighthouse')).default;
   let chrome;
   let result;
 
   try {
-    // Clear any existing performance marks to prevent conflicts
-    if (typeof performance !== 'undefined' && performance.clearMarks) {
-      performance.clearMarks();
-      performance.clearMeasures();
-    }
-
-    // Get or reuse existing Chrome instance
-    chrome = await chromeManager.getOrCreateChrome();
+    // Get Chrome instance (simple)
+    chrome = await getChrome();
 
     const flags = {
       port: chrome.port,
@@ -134,26 +108,20 @@ const launchChromeAndRunLighthouse = async (url, userConfig = {}, useFasterConne
 
     result = await lighthouse(url, flags, mergedConfig);
     
-    // Keep all data for complete HTML reports
+    // Keep reports but remove heavy objects
+    if (result && result.lhr) {
+      delete result.lhr.artifacts;
+      delete result.lhr.fullPageScreenshot;
+    }
     
     return result;
   } catch (err) {
     console.error('Error appeared while running lighthouse', err);
     throw err;
   } finally {
-    // Keep Chrome alive, just clean up result
-    console.log(`[KEEP-ALIVE] Chrome process ${chrome?.pid} stays running for reuse`);
-    
-    // Clear result object completely
+    // Release Chrome for next use
+    releaseChrome();
     result = null;
-    
-    // Force garbage collection
-    if (global.gc) {
-      global.gc();
-    }
-    
-    // Always release the mutex
-    chromeManager.release();
   }
 };
 const createReport = async (results) => {
@@ -241,10 +209,6 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         const report = await createReport(lighthouse.lhr);
         await fs.outputFile(resultsLocation, report);
         console.log(`Saved report for ${url}`);
-        
-        // Clear report from memory immediately
-        let reportCleared = report;
-        reportCleared = null;
 
         const data = filterResults(lighthouse.lhr, fasterInternetConnection);
         
