@@ -30,7 +30,8 @@ const chromeFlags = [
     '--no-zygote',
     '--no-sandbox',
     '--headless',
-    '--collect.settings.maxWaitForFcp="450000"'
+    '--collect.settings.maxWaitForFcp="450000"',
+    '--disable-dev-shm-usage'
 ];
 
 const lighthouseOptions = {
