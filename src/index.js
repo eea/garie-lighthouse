@@ -50,6 +50,9 @@ const filterResults = (data = {}, fasterInternetConnection) => {
             report[key] = rawValue;
         }
     });
+    if (Object.values(report).every(value => value == 0)) {
+        throw "All values are 0";
+    }
 
     var cleanReport = {};
     Object.keys(report).forEach(key => {
