@@ -99,7 +99,7 @@ const getAndParseLighthouseData = async(item, url, fasterInternetConnection, rep
         return data;
     } catch (err) {
         console.log(`Failed to run lighthouse for ${url}`, err);
-        throw err;
+        return null;
     }
 }
 
@@ -119,9 +119,16 @@ const myGetData = async (item) => {
 
             const data_fast = await getAndParseLighthouseData(item, url, true, reportFolder);
             const data = await getAndParseLighthouseData(item, url, false, reportFolder);
+            
+            if (!data_fast && !data) {
+                console.log(`Both fast and default lighthouse runs failed for ${url}`);
+                reject(`Failed to get data for ${url}`);
+                return;
+            }
+            
             const full_data = {
-                ...data,
-                ...data_fast
+                ...(data || {}),
+                ...(data_fast || {})
             };
             resolve(full_data);
 
