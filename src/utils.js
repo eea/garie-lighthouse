@@ -48,9 +48,9 @@ const lighthouseOptions = {
 
 const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnection) => {
     await waitForLighthouse();
-    
+
     let chrome;
-    let result = [];
+    let result = null;
     try {
         chrome = await chromeLauncher.launch({ chromeFlags });
 
@@ -70,15 +70,14 @@ const launchChromeAndRunLighthouse = async (url, config, fasterInternetConnectio
         result = await lighthouse(url, flags, config);
         await chrome.kill();
     } catch (err) {
-        console.log("Error appeared while running lighthouse", err);
+        console.log(`Lighthouse error for ${url}: ${err.message}`);
         try {
             if (chrome !== undefined) {
                 await chrome.kill();
             }
         } catch(e) {
-            console.log("Error appeared after lighthouse crashed and tried to kill chrome", e);
+            console.log(`Error killing chrome after lighthouse failure for ${url}: ${e.message}`);
         }
-        throw err;
     } finally {
         releaseLighthouse();
     }
