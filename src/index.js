@@ -5,6 +5,10 @@ const config = require('../config');
 
 const { launchChromeAndRunLighthouse, createReport } = require('./utils');
 
+process.on('unhandledRejection', (reason) => {
+    console.log(`Unhandled rejection (caught to prevent crash): ${reason?.message || reason}`);
+});
+
 const filterResults = (data = {}, fasterInternetConnection) => {
     const { categories = {}, audits = {} } = data;
 
@@ -61,10 +65,14 @@ const filterResults = (data = {}, fasterInternetConnection) => {
 
 const getAndParseLighthouseData = async(item, url, fasterInternetConnection, reportFolder) => {
     try {
-        const lighthouse =
-            (await launchChromeAndRunLighthouse(url, {
-                extends: 'lighthouse:default'
-            }, fasterInternetConnection)) || {};
+        const lighthouse = await launchChromeAndRunLighthouse(url, {
+            extends: 'lighthouse:default'
+        }, fasterInternetConnection);
+
+        if (!lighthouse || !lighthouse.lhr) {
+            console.log(`No valid lighthouse result for ${url}`);
+            return null;
+        }
 
         if (fasterInternetConnection) {
             console.log(`Successfully got fast data for ${url}`);

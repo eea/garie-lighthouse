@@ -1,6 +1,6 @@
 {
     "name": "garie-lighthouse",
-    "version": "2.5.0",
+    "version": "2.5.5",
     "description": "Lighthouse image for performance metrics",
     "engines": {
         "node": ">=6"
@@ -12,9 +12,9 @@
 
     },
     "dependencies": {
-        "garie-plugin": "https://github.com/eea/garie-plugin#0.0.45",
+        "garie-plugin": "https://github.com/eea/garie-plugin#0.0.47",
         "chrome-launcher": "^0.13.4",
-        "lighthouse": "12.7.1"
+        "lighthouse": "12.8.2"
     },
     "devDependencies": {
         "codecov": "^3.0.0",
